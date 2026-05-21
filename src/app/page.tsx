@@ -4,63 +4,126 @@ import React, { useState, useEffect } from 'react';
 import { ChannelInfo, VideoItem } from '@/lib/mockData';
 import { getDashboardData } from '@/lib/youtube';
 
+// 최근 N주간의 목~수 리포팅 주간 목록을 계산하는 헬퍼 함수
+interface ReportingWeek {
+  id: string;
+  label: string;
+  start: Date;
+  end: Date;
+}
+
+function generateReportingWeeks(count: number = 4): ReportingWeek[] {
+  const weeks: ReportingWeek[] = [];
+  const today = new Date();
+  
+  for (let i = 0; i < count; i++) {
+    const target = new Date(today);
+    // i주 전 날짜로 조정
+    target.setDate(today.getDate() - (i * 7));
+    
+    const currentDay = target.getDay(); // 0: 일, 1: 월, ..., 3: 수
+    const latestWednesday = new Date(target);
+    latestWednesday.setHours(0, 0, 0, 0);
+    
+    let diffToWed = currentDay - 3;
+    if (diffToWed < 0) {
+      diffToWed += 7;
+    }
+    latestWednesday.setDate(target.getDate() - diffToWed);
+    
+    // 수요일 기준 전주 목요일 (6일 전)
+    const prevThursday = new Date(latestWednesday);
+    prevThursday.setDate(latestWednesday.getDate() - 6);
+    prevThursday.setHours(0, 0, 0, 0);
+    
+    // 이번 주 수요일 23:59:59
+    const wednesdayEnd = new Date(latestWednesday);
+    wednesdayEnd.setHours(23, 59, 59, 999);
+    
+    const formattedStart = `${prevThursday.getMonth() + 1}월 ${prevThursday.getDate()}일`;
+    const formattedEnd = `${wednesdayEnd.getMonth() + 1}월 ${wednesdayEnd.getDate()}일`;
+    
+    const label = `${prevThursday.getFullYear()}년 ${formattedStart} ~ ${formattedEnd}` + (i === 0 ? ' (이번 주)' : i === 1 ? ' (지난주)' : ` (${i}주 전)`);
+    
+    weeks.push({
+      id: `${prevThursday.getTime()}-${wednesdayEnd.getTime()}`,
+      label,
+      start: prevThursday,
+      end: wednesdayEnd
+    });
+  }
+  
+  return weeks;
+}
+
 export default function DashboardPage() {
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
-  const [reportingRange, setReportingRange] = useState<string>('');
-  const [isMock, setIsMock] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'all' | 'video' | 'shorts'>('all');
   
-  // 브라우저 자가 API 키 입력 기능 지원 (localStorage 저장)
-  const [userApiKey, setUserApiKey] = useState<string>('');
-  const [showKeyInput, setShowKeyInput] = useState<boolean>(false);
+  // 동적 리포팅 주간 옵션 목록 (최근 4주)
+  const [reportingWeeks, setReportingWeeks] = useState<ReportingWeek[]>([]);
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('');
 
-  const loadData = async (keyToUse?: string) => {
-    setLoading(true);
+  const loadData = async (isRefresh: boolean = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
-      const data = await getDashboardData(keyToUse);
+      // 로컬스토리지 혹은 서버 환경 변수 API 키 탐지
+      const savedKey = typeof window !== 'undefined' ? localStorage.getItem('KODEX_DASHBOARD_API_KEY') || '' : '';
+      const data = await getDashboardData(savedKey);
       setChannels(data.channels);
-      setReportingRange(data.reportingRange);
-      setIsMock(data.isMock);
     } catch (error) {
       console.error("데이터 로드 실패:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('KODEX_DASHBOARD_API_KEY') || '';
-    if (savedKey) {
-      setUserApiKey(savedKey);
-      loadData(savedKey);
-    } else {
-      loadData();
+    // 캘린더 주간 옵션 세팅
+    const weeks = generateReportingWeeks(4);
+    setReportingWeeks(weeks);
+    if (weeks.length > 0) {
+      setSelectedWeekId(weeks[0].id);
     }
+    loadData();
   }, []);
 
-  const handleSaveApiKey = () => {
-    if (userApiKey.trim()) {
-      localStorage.setItem('KODEX_DASHBOARD_API_KEY', userApiKey.trim());
-      loadData(userApiKey.trim());
-      setShowKeyInput(false);
-    } else {
-      handleClearApiKey();
-    }
+  const handleRefresh = () => {
+    loadData(true);
   };
 
-  const handleClearApiKey = () => {
-    localStorage.removeItem('KODEX_DASHBOARD_API_KEY');
-    setUserApiKey('');
-    loadData();
-    setShowKeyInput(false);
+  // 선택된 주간 객체 반환
+  const getSelectedWeek = (): ReportingWeek | undefined => {
+    return reportingWeeks.find(w => w.id === selectedWeekId);
   };
 
-  // 모든 채널의 비디오를 하나의 목록으로 통합 후 날짜 내림차순 정렬
+  // 선택된 주간의 날짜 범위 필터에 맞는 비디오만 추출하는 함수
+  const getFilteredVideosForSelectedWeek = (videos: VideoItem[], week: ReportingWeek | undefined): VideoItem[] => {
+    if (!week) return videos;
+    return videos.filter(v => {
+      const pubDate = new Date(v.publishedAt);
+      return pubDate >= week.start && pubDate <= week.end;
+    });
+  };
+
+  // 모든 채널의 비디오를 하나의 목록으로 통합 후 selectedWeek 기준 필터링 및 정렬
   const getAllVideos = (): (VideoItem & { channelName: string; channelLogo: string; isCompany: boolean; handle: string })[] => {
     const all: any[] = [];
+    const selectedWeek = getSelectedWeek();
+
     channels.forEach(ch => {
-      ch.videos.forEach(v => {
+      // 각 채널 비디오 중 selectedWeek 기간 내 영상만 1차 필터링
+      const weekFiltered = getFilteredVideosForSelectedWeek(ch.videos, selectedWeek);
+      
+      weekFiltered.forEach(v => {
         all.push({
           ...v,
           channelName: ch.name,
@@ -78,16 +141,19 @@ export default function DashboardPage() {
     return v.type === activeTab;
   });
 
-  // 이번 주 업로드 영상 통계 계산 (일반 동영상 / 쇼츠 구분)
-  const getUploadStats = (channel: ChannelInfo) => {
-    const videos = channel.videos.filter(v => v.type === 'video').length;
-    const shorts = channel.videos.filter(v => v.type === 'shorts').length;
+  // 선택된 주간에 따른 채널별 업로드 통계(Video/Shorts 분리) 계산
+  const getUploadStatsForWeek = (channel: ChannelInfo) => {
+    const selectedWeek = getSelectedWeek();
+    const weekVideos = getFilteredVideosForSelectedWeek(channel.videos, selectedWeek);
+    
+    const videos = weekVideos.filter(v => v.type === 'video').length;
+    const shorts = weekVideos.filter(v => v.type === 'shorts').length;
     return { videos, shorts, total: videos + shorts };
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
-      {/* 헤더 영역 */}
+      {/* 헤더 영역 - 깔끔하고 직관적인 프로덕션 모드 */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -101,74 +167,48 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* 주간 보고 범위 노출 */}
-            <div className="bg-slate-100 text-slate-600 text-xs px-3 py-2 rounded-lg font-medium">
-              📅 리포팅 주간: <span className="font-semibold text-slate-800">{reportingRange || '날짜 계산 중...'}</span>
+          {/* 컨트롤 영역: 주간 캘린더 드롭박스 & 새로고침 */}
+          <div className="flex items-center gap-3 self-start md:self-auto w-full md:w-auto">
+            {/* 리포팅 주간 선택 드롭박스 */}
+            <div className="relative flex-1 md:flex-none">
+              <select
+                value={selectedWeekId}
+                onChange={(e) => setSelectedWeekId(e.target.value)}
+                className="w-full md:w-[320px] bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-200/40 focus:outline-none focus:ring-2 focus:ring-kodex-navy transition-all appearance-none cursor-pointer pr-10 shadow-sm"
+              >
+                {reportingWeeks.map(week => (
+                  <option key={week.id} value={week.id}>
+                    {week.label}
+                  </option>
+                ))}
+              </select>
+              {/* 드롭박스 아이콘 화살표 */}
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
 
-            {/* 수집 모드 배지 */}
-            {isMock ? (
-              <span className="bg-amber-50 text-amber-700 border border-amber-200/60 text-xs px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                데모 데이터 모드
-              </span>
-            ) : (
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-xs px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                실시간 YouTube 연동
-              </span>
-            )}
-
-            {/* API Key 설정 버튼 */}
+            {/* 새로고침 버튼 */}
             <button
-              onClick={() => setShowKeyInput(!showKeyInput)}
-              className="text-xs border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg font-medium transition-colors"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="bg-white hover:bg-slate-50 border border-slate-200/80 shadow-sm text-slate-700 p-2.5 rounded-xl flex items-center justify-center transition-colors disabled:opacity-60 cursor-pointer text-xs font-bold gap-1.5"
+              title="데이터 실시간 동기화"
             >
-              🔑 {userApiKey ? 'API Key 변경' : '실시간 연동'}
+              <svg 
+                className={`w-4 h-4 text-slate-500 ${refreshing ? 'animate-spin text-kodex-blue' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
+              </svg>
+              <span>새로고침</span>
             </button>
           </div>
         </div>
-        
-        {/* API Key 입력 팝업형 배너 */}
-        {showKeyInput && (
-          <div className="bg-slate-100 border-t border-slate-200 p-4">
-            <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-3 items-center">
-              <input
-                type="password"
-                placeholder="Google Cloud YouTube Data API Key를 입력하세요"
-                value={userApiKey}
-                onChange={(e) => setUserApiKey(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kodex-navy"
-              />
-              <div className="flex gap-2 w-full sm:w-auto shrink-0">
-                <button
-                  onClick={handleSaveApiKey}
-                  className="w-full sm:w-auto bg-kodex-navy text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors"
-                >
-                  적용
-                </button>
-                {localStorage.getItem('KODEX_DASHBOARD_API_KEY') && (
-                  <button
-                    onClick={handleClearApiKey}
-                    className="w-full sm:w-auto bg-white border border-slate-300 text-slate-600 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
-                  >
-                    초기화
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowKeyInput(false)}
-                  className="w-full sm:w-auto text-slate-400 text-sm hover:text-slate-600 px-2 py-2"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-            <p className="text-center text-[11px] text-slate-500 mt-2">
-              입력하신 API Key는 서버에 전송되지 않으며, 사용자 본인의 브라우저 안전 영역(LocalStorage)에만 저장됩니다.
-            </p>
-          </div>
-        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-10">
@@ -177,7 +217,7 @@ export default function DashboardPage() {
           <div className="space-y-10 animate-pulse">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white h-44 rounded-2xl border border-slate-100"></div>
+                <div key={i} className="bg-white h-48 rounded-2xl border border-slate-100"></div>
               ))}
             </div>
             <div className="bg-white h-96 rounded-2xl border border-slate-100"></div>
@@ -193,7 +233,7 @@ export default function DashboardPage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {channels.map(channel => {
-                  const stats = getUploadStats(channel);
+                  const stats = getUploadStatsForWeek(channel);
                   
                   return channel.isCompany ? (
                     /* KODEX 자사 카드 - 압도적인 시각화 */
@@ -231,11 +271,11 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-slate-400 font-medium leading-none">이번 주 업로드</p>
+                          <p className="text-[11px] text-slate-400 font-medium leading-none">선택 주간 업로드</p>
                           <div className="flex items-baseline gap-1 mt-1">
                             <p className="text-2xl font-black text-kodex-navy tracking-tight">{stats.total}건</p>
                             <span className="text-[10px] text-slate-500 font-medium">
-                              (동영상 {stats.videos} / 쇼츠 {stats.shorts})
+                              (동영 {stats.videos} / 쇼츠 {stats.shorts})
                             </span>
                           </div>
                         </div>
@@ -277,11 +317,11 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-slate-400 font-medium leading-none">이번 주 업로드</p>
+                          <p className="text-[11px] text-slate-400 font-medium leading-none">선택 주간 업로드</p>
                           <div className="flex items-baseline gap-1 mt-1">
                             <p className="text-xl font-bold text-slate-600 tracking-tight">{stats.total}건</p>
                             <span className="text-[10px] text-slate-400 font-medium">
-                              (동영상 {stats.videos} / 쇼츠 {stats.shorts})
+                              (동영 {stats.videos} / 쇼츠 {stats.shorts})
                             </span>
                           </div>
                         </div>
@@ -354,7 +394,7 @@ export default function DashboardPage() {
                       {filteredVideos.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center py-16 text-slate-400 font-medium">
-                            해당 주간에 등록된 영상 내역이 존재하지 않습니다.
+                            선택하신 리포팅 주간 내에 등록된 영상 내역이 존재하지 않습니다.
                           </td>
                         </tr>
                       ) : (
@@ -373,7 +413,7 @@ export default function DashboardPage() {
                                   alt={video.channelName} 
                                   className={`w-7 h-7 rounded-full object-cover ${!video.isCompany && 'grayscale'}`}
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=80&q=80"
+                                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=80&/80"
                                   }}
                                 />
                                 <div>
