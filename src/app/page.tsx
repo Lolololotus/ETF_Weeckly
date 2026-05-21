@@ -60,7 +60,12 @@ export default function DashboardPage() {
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  
+  // 필터 1: 비디오 형식 필터 (전체/동영상/Shorts)
   const [activeTab, setActiveTab] = useState<'all' | 'video' | 'shorts'>('all');
+  
+  // 필터 2: 채널별 필터 (전체/KODEX/TIGER/SOL)
+  const [selectedChannel, setSelectedChannel] = useState<'all' | 'kodex' | 'tiger' | 'sol'>('all');
   
   // 동적 리포팅 주간 옵션 목록 (최근 4주)
   const [reportingWeeks, setReportingWeeks] = useState<ReportingWeek[]>([]);
@@ -136,9 +141,22 @@ export default function DashboardPage() {
     return all.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   };
 
+  // 1차 주간 필터링된 비디오 목록에 대하여 채널 필터 및 비디오 형식 필터 결합 적용
   const filteredVideos = getAllVideos().filter(v => {
-    if (activeTab === 'all') return true;
-    return v.type === activeTab;
+    // 1. 비디오 형식 필터 적용
+    const formatMatch = activeTab === 'all' || v.type === activeTab;
+    
+    // 2. 채널별 필터 적용
+    let channelMatch = true;
+    if (selectedChannel === 'kodex') {
+      channelMatch = v.isCompany; // 자사 KODEX 여부
+    } else if (selectedChannel === 'tiger') {
+      channelMatch = v.channelName.toLowerCase().includes('tiger');
+    } else if (selectedChannel === 'sol') {
+      channelMatch = v.channelName.toLowerCase().includes('sol');
+    }
+    
+    return formatMatch && channelMatch;
   });
 
   // 선택된 주간에 따른 채널별 업로드 통계(Video/Shorts 분리) 계산
@@ -239,7 +257,9 @@ export default function DashboardPage() {
                     /* KODEX 자사 카드 - 압도적인 시각화 */
                     <div 
                       key={channel.id} 
-                      className="bg-white border-2 border-kodex-navy rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between h-48 transition-all duration-300 hover:shadow-lg"
+                      className="bg-white border-2 border-kodex-navy rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between h-48 transition-all duration-300 hover:shadow-lg cursor-pointer"
+                      onClick={() => setSelectedChannel('kodex')}
+                      title="클릭 시 하단 테이블을 KODEX 콘텐츠로 필터링합니다"
                     >
                       {/* 로고 및 채널명 */}
                       <div className="flex items-center gap-3">
@@ -288,7 +308,9 @@ export default function DashboardPage() {
                     /* 경쟁사 카드 - 차분하게 톤다운 처리 */
                     <div 
                       key={channel.id} 
-                      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-48 transition-all duration-300 hover:shadow-md"
+                      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-48 transition-all duration-300 hover:shadow-md cursor-pointer"
+                      onClick={() => setSelectedChannel(channel.name.toLowerCase().includes('tiger') ? 'tiger' : 'sol')}
+                      title={`클릭 시 하단 테이블을 ${channel.name.includes('TIGER') ? 'TIGER' : 'SOL'} 콘텐츠로 필터링합니다`}
                     >
                       {/* 로고 및 채널명 */}
                       <div className="flex items-center gap-3">
@@ -334,44 +356,95 @@ export default function DashboardPage() {
 
             {/* [섹션 2] 상세 분석 테이블 */}
             <section className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-200/60 pb-3">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
                   <span className="w-1 h-4 bg-kodex-navy rounded-full"></span>
                   콘텐츠 업로드 상세 현황
                 </h2>
 
-                {/* 필터링 탭 */}
-                <div className="flex bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto border border-slate-200/50">
-                  <button
-                    onClick={() => setActiveTab('all')}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all ${
-                      activeTab === 'all'
-                        ? 'bg-white text-kodex-navy shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    전체 보기
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('video')}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all ${
-                      activeTab === 'video'
-                        ? 'bg-white text-kodex-navy shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    동영상만 보기
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('shorts')}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all ${
-                      activeTab === 'shorts'
-                        ? 'bg-white text-kodex-navy shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Shorts만 보기
-                  </button>
+                {/* 이중 필터 영역 (채널 필터 + 비디오 포맷 필터) */}
+                <div className="flex flex-wrap items-center gap-3">
+                  
+                  {/* [고도화] 채널별 선택 필터 (Chips 형태) */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
+                    <button
+                      onClick={() => setSelectedChannel('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        selectedChannel === 'all'
+                          ? 'bg-white text-slate-800 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      전체 채널
+                    </button>
+                    <button
+                      onClick={() => setSelectedChannel('kodex')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                        selectedChannel === 'kodex'
+                          ? 'bg-kodex-navy text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      KODEX (자사)
+                    </button>
+                    <button
+                      onClick={() => setSelectedChannel('tiger')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        selectedChannel === 'tiger'
+                          ? 'bg-slate-700 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      TIGER
+                    </button>
+                    <button
+                      onClick={() => setSelectedChannel('sol')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        selectedChannel === 'sol'
+                          ? 'bg-slate-500 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      SOL
+                    </button>
+                  </div>
+
+                  <span className="text-slate-300 hidden lg:inline">|</span>
+
+                  {/* 비디오 포맷 필터 탭 */}
+                  <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
+                    <button
+                      onClick={() => setActiveTab('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeTab === 'all'
+                          ? 'bg-white text-kodex-navy shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      전체 형식
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('video')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeTab === 'video'
+                          ? 'bg-white text-kodex-navy shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      동영상만
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('shorts')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeTab === 'shorts'
+                          ? 'bg-white text-kodex-navy shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Shorts만
+                    </button>
+                  </div>
+                  
                 </div>
               </div>
 
@@ -394,7 +467,19 @@ export default function DashboardPage() {
                       {filteredVideos.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center py-16 text-slate-400 font-medium">
-                            선택하신 리포팅 주간 내에 등록된 영상 내역이 존재하지 않습니다.
+                            {selectedChannel !== 'all' || activeTab !== 'all' ? (
+                              <div className="space-y-1">
+                                <p>선택하신 조건에 부합하는 영상이 없습니다.</p>
+                                <button 
+                                  onClick={() => { setSelectedChannel('all'); setActiveTab('all'); }} 
+                                  className="text-xs text-kodex-blue font-bold underline hover:text-kodex-navy cursor-pointer mt-1"
+                                >
+                                  필터 초기화하기
+                                </button>
+                              </div>
+                            ) : (
+                              "선택하신 리포팅 주간 내에 등록된 영상 내역이 존재하지 않습니다."
+                            )}
                           </td>
                         </tr>
                       ) : (
@@ -413,7 +498,7 @@ export default function DashboardPage() {
                                   alt={video.channelName} 
                                   className={`w-7 h-7 rounded-full object-cover ${!video.isCompany && 'grayscale'}`}
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=80&/80"
+                                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=80&q=80"
                                   }}
                                 />
                                 <div>
