@@ -79,12 +79,22 @@ export default function DashboardPage() {
     }
     
     try {
-      // 로컬스토리지 혹은 서버 환경 변수 API 키 탐지
-      const savedKey = typeof window !== 'undefined' ? localStorage.getItem('KODEX_DASHBOARD_API_KEY') || '' : '';
-      const data = await getDashboardData(savedKey);
+      // 서버 API Route를 호출하여 API 키 노출 없이 실시간 데이터를 안전하게 조회
+      const res = await fetch('/api/dashboard');
+      if (!res.ok) {
+        throw new Error(`API 응답 실패: ${res.status}`);
+      }
+      const data = await res.json();
       setChannels(data.channels);
     } catch (error) {
-      console.error("데이터 로드 실패:", error);
+      console.error("데이터 로드 실패 (실시간 연동 실패), 가데이터로 폴백합니다:", error);
+      try {
+        // API 호출 에러 시 클라이언트 측에서 직접 getDashboardData를 호출하여 가데이터 폴백 수행
+        const fallbackData = await getDashboardData();
+        setChannels(fallbackData.channels);
+      } catch (fbError) {
+        console.error("가데이터 폴백 에러:", fbError);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
