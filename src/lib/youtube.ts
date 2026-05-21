@@ -61,7 +61,7 @@ export function getReportingRange(targetDate: Date = new Date()) {
 }
 
 const CHANNELS_TO_FETCH = [
-  { handle: "@samsungfund", isCompany: true },
+  { handle: "@KODEXETF", isCompany: true },
   { handle: "@tiger_etf", isCompany: false },
   { handle: "@SOL_ETF", isCompany: false }
 ];

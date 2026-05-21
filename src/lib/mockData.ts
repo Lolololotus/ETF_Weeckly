@@ -23,9 +23,9 @@ export interface ChannelInfo {
 
 export const MOCK_CHANNELS: ChannelInfo[] = [
   {
-    id: "UCsamsungfund",
+    id: "UCKODEXETF", // Mock ID also reflects the new handle for safety
     name: "삼성자산운용 KODEX ETF",
-    handle: "@samsungfund",
+    handle: "@KODEXETF",
     logo: "https://yt3.ggpht.com/ytc/AIdro5kZl0V9nQy_2lYnUq8pZ6kF_jV-m9eB_Zg9oQ=s176-c-k-c0x00ffffff-no-rj",
     subscribers: 128500,
     subscribersText: "12.8만명",

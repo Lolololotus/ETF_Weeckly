@@ -125,7 +125,7 @@ async function verifyAPI() {
   console.log(`📅 수집 타겟 범위: ${range.start.toISOString()} ~ ${range.end.toISOString()}`);
 
   const channelsToFetch = [
-    { handle: "@samsungfund", name: "KODEX (자사)" },
+    { handle: "@KODEXETF", name: "KODEX (자사)" },
     { handle: "@tiger_etf", name: "TIGER ETF (경쟁사1)" },
     { handle: "@SOL_ETF", name: "SOL ETF (경쟁사2)" }
   ];
