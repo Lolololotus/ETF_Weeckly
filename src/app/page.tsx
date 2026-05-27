@@ -119,24 +119,9 @@ export default function DashboardPage() {
   useEffect(() => {
     // 캘린더 주간 옵션 세팅 (최근 4주)
     const weeks = generateReportingWeeks(4);
-    
-    if (weeks.length >= 2) {
-      // 최근 2주(이번주 + 지난주) 통합 조회용 가상 객체 생성
-      const combinedWeek: ReportingWeek = {
-        id: 'combined',
-        label: '✨ 최근 2주 통합 (이번 주 + 지난주)',
-        start: weeks[1].start, // 지난주 목요일부터
-        end: weeks[0].end       // 이번 주 수요일까지
-      };
-      
-      const updatedWeeks = [combinedWeek, ...weeks];
-      setReportingWeeks(updatedWeeks);
-      setSelectedWeekId('combined'); // 최초 로드 시 2주치 통합 데이터가 기본 노출되도록 설정!
-    } else {
-      setReportingWeeks(weeks);
-      if (weeks.length > 0) {
-        setSelectedWeekId(weeks[0].id);
-      }
+    setReportingWeeks(weeks);
+    if (weeks.length > 0) {
+      setSelectedWeekId(weeks[0].id); // 최초 진입 시 '이번 주'가 기본 선택되도록 설정
     }
     loadData();
   }, []);
