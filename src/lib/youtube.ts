@@ -71,9 +71,14 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
   const range = getReportingRange();
   const rangeText = `${range.formattedStart} ~ ${range.formattedEnd}`;
 
+  // 넉넉하게 최근 35일(5주) 전부터의 모든 최신 업로드 영상을 API 수준에서 수집하여, 
+  // 클라이언트 단에서 "이번 주"뿐만 아니라 "지난주", "2주 전" 등 과거 주간 데이터를 누락 없이 정확하게 볼 수 있도록 조치합니다.
+  const collectStartDate = new Date();
+  collectStartDate.setDate(collectStartDate.getDate() - 35);
+  collectStartDate.setHours(0, 0, 0, 0);
+
   if (!activeKey) {
     console.log("[YouTube API] API Key가 제공되지 않아 가데이터(Mock Data)를 사용합니다.");
-    // 가데이터에서 날짜 범위에 맞게 동적으로 publishedAt 필터링(필요 시) 하거나 기본 데이터 제공
     return {
       channels: MOCK_CHANNELS,
       reportingRange: rangeText,
@@ -114,8 +119,8 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
         subscribersText = `${subscriberCount.toLocaleString()}명`;
       }
 
-      // 2. 업로드 재생목록에서 최근 동영상 조회
-      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=30&key=${activeKey}`;
+      // 2. 업로드 재생목록에서 최근 동영상 조회 (maxResults=50 으로 대폭 상향하여 5주 전 영상까지 누락 방지)
+      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&key=${activeKey}`;
       const playlistRes = await fetch(playlistUrl);
       
       if (!playlistRes.ok) {
@@ -132,15 +137,14 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
         const publishedAtStr = rawItem.snippet.publishedAt;
         const publishedDate = new Date(publishedAtStr);
 
-        // 주간 리포팅 날짜 범위 필터링 (전주 목요일 ~ 이번 주 수요일)
-        if (publishedDate >= range.start && publishedDate <= range.end) {
+        // 최근 35일(5주) 이내에 업로드된 모든 비디오 수집
+        if (publishedDate >= collectStartDate) {
           videoIds.push(videoId);
           tempVideos.push({
             id: videoId,
             publishedAt: publishedAtStr,
             title: rawItem.snippet.title,
             description: rawItem.snippet.description || "",
-            // 기본 썸네일 폴백 설정
             thumbnail: rawItem.snippet.thumbnails?.maxres?.url || 
                        rawItem.snippet.thumbnails?.standard?.url || 
                        rawItem.snippet.thumbnails?.high?.url || 
