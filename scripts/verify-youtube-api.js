@@ -79,6 +79,23 @@ function getReportingRange() {
   return { start: prevThursday, end: wednesdayEnd };
 }
 
+// 유튜브 쇼츠 여부를 HTTP HEAD 요청의 리다이렉트 여부로 판별하는 헬퍼 함수
+async function checkIfShorts(videoId) {
+  try {
+    const res = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      redirect: 'manual'
+    });
+    return res.status === 200;
+  } catch (e) {
+    console.error(`[YouTube API] Video ID ${videoId} 쇼츠 여부 확인 HEAD 요청 중 에러:`, e);
+    return null;
+  }
+}
+
 async function verifyAPI() {
   const env = loadEnv();
   // 1. 파라미터 인자 혹은 env 파일에서 API 키 추출
@@ -199,29 +216,31 @@ async function verifyAPI() {
       console.log(`📅 주간 범위 내 업로드된 영상: ${filteredVideos.length}개`);
 
       if (filteredVideos.length > 0) {
-        // 상세 데이터 조회 (첫 번째 영상으로 썸네일/설명 검증)
-        const sample = filteredVideos[0];
-        console.log(`\n   🔍 [검증 샘플 영상 정보]`);
-        console.log(`   - 제목: "${sample.title}"`);
-        console.log(`   - 업로드 일시: ${sample.publishedAt}`);
-        console.log(`   - 썸네일(maxres/std): ${sample.thumbnail}`);
-        
-        // 상세 API 호출하여 러닝타임 조회
-        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${sample.id}&key=${apiKey}`;
-        const detailsRes = await fetch(detailsUrl);
-        if (detailsRes.ok) {
-          const detailsData = await detailsRes.json();
-          const detailItem = detailsData.items?.[0];
-          if (detailItem) {
-            const parsed = parseDuration(detailItem.contentDetails.duration);
-            const isShorts = parsed.seconds <= 60;
-            console.log(`   - 러닝타임: ${parsed.text} (${parsed.seconds}초, 분류: ${isShorts ? 'SHORTS' : 'VIDEO'})`);
+        console.log(`\n   🔍 [검증 영상 정보 목록]`);
+        for (const sample of filteredVideos) {
+          console.log(`   --------------------------------------`);
+          console.log(`   - 제목: "${sample.title}"`);
+          console.log(`   - 업로드 일시: ${sample.publishedAt}`);
+          console.log(`   - 썸네일(maxres/std): ${sample.thumbnail}`);
+          
+          // 상세 API 호출하여 러닝타임 조회
+          const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${sample.id}&key=${apiKey}`;
+          const detailsRes = await fetch(detailsUrl);
+          if (detailsRes.ok) {
+            const detailsData = await detailsRes.json();
+            const detailItem = detailsData.items?.[0];
+            if (detailItem) {
+              const parsed = parseDuration(detailItem.contentDetails.duration);
+              const headCheck = await checkIfShorts(sample.id);
+              const isShorts = headCheck !== null ? headCheck : (parsed.seconds <= 60);
+              console.log(`   - 러닝타임: ${parsed.text} (${parsed.seconds}초, 분류: ${isShorts ? 'SHORTS' : 'VIDEO'}${headCheck !== null ? '' : ' (폴백 적용)'})`);
+            }
           }
+          
+          const descPreview = sample.description.replace(/\n/g, ' ').substring(0, 80);
+          console.log(`   - 설명란 수집 성공 여부: ${sample.description ? '성공 (OK)' : '비어있음'}`);
+          console.log(`   - 설명란 미리보기: "${descPreview}..."`);
         }
-        
-        const descPreview = sample.description.replace(/\n/g, ' ').substring(0, 80);
-        console.log(`   - 설명란 수집 성공 여부: ${sample.description ? '성공 (OK)' : '비어있음'}`);
-        console.log(`   - 설명란 미리보기: "${descPreview}..."`);
       } else {
         console.log(`   ℹ️ 해당 주간에 업로드된 영상이 없습니다.`);
         // 범위 밖의 가장 최근 영상 1개 검증

@@ -154,6 +154,26 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
         }
       }
 
+// 유튜브 쇼츠 여부를 HTTP HEAD 요청의 리다이렉트 여부로 판별하는 헬퍼 함수
+async function checkIfShorts(videoId: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      redirect: 'manual',
+      cache: 'no-store'
+    });
+    const isShort = res.status === 200;
+    console.log(`[YouTube API] VideoId ${videoId} HEAD status: ${res.status} -> ${isShort ? 'SHORTS' : 'VIDEO'}`);
+    return isShort;
+  } catch (e) {
+    console.error(`[YouTube API] Video ID ${videoId} 쇼츠 여부 확인 HEAD 요청 중 에러:`, e);
+    return null;
+  }
+}
+
       const finalVideos: VideoItem[] = [];
 
       // 3. 필터링된 영상이 있으면 상세 정보(러닝타임 등) 일괄 조회
@@ -166,6 +186,17 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
           const detailsData = await detailsRes.json();
           const detailItems = detailsData.items || [];
 
+          // 모든 비디오의 쇼츠 여부를 HEAD 요청으로 실시간 검증 (병렬 처리)
+          const shortsChecks = await Promise.all(
+            tempVideos.map(async (tempVideo) => {
+              const isShort = await checkIfShorts(tempVideo.id);
+              return { id: tempVideo.id, isShort };
+            })
+          );
+          const shortsMap = new Map<string, boolean | null>(
+            shortsChecks.map(c => [c.id, c.isShort])
+          );
+
           for (const tempVideo of tempVideos) {
             const detailItem = detailItems.find((d: any) => d.id === tempVideo.id);
             let duration = "00:00";
@@ -177,9 +208,13 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
               duration = parsedDuration.text;
               durationSeconds = parsedDuration.seconds;
               
-              // 60초(1분) 이하는 Shorts로 분류
-              if (durationSeconds <= 60) {
-                videoType = 'shorts';
+              // 1. HTTP HEAD 검증 결과 사용
+              const headCheck = shortsMap.get(tempVideo.id);
+              if (headCheck !== undefined && headCheck !== null) {
+                videoType = headCheck ? 'shorts' : 'video';
+              } else {
+                // 2. HTTP 검증 실패 시 기존 duration 기반으로 폴백
+                videoType = durationSeconds <= 60 ? 'shorts' : 'video';
               }
               
               // 상세 정보의 maxres 썸네일이 있을 시 업데이트
