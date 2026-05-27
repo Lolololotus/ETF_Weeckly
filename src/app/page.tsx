@@ -101,12 +101,42 @@ export default function DashboardPage() {
     }
   };
 
+  // 이번 주와 지난주의 업로드 통계를 상시 비교 분석하는 헬퍼 함수
+  const getComparisonStats = (channel: ChannelInfo) => {
+    const weeks = generateReportingWeeks(2); // [이번주, 지난주]
+    if (weeks.length < 2) return { thisWeek: 0, lastWeek: 0, diff: 0 };
+    
+    const thisWeekVideos = getFilteredVideosForSelectedWeek(channel.videos, weeks[0]);
+    const lastWeekVideos = getFilteredVideosForSelectedWeek(channel.videos, weeks[1]);
+    
+    const thisWeek = thisWeekVideos.length;
+    const lastWeek = lastWeekVideos.length;
+    const diff = thisWeek - lastWeek;
+    
+    return { thisWeek, lastWeek, diff };
+  };
+
   useEffect(() => {
-    // 캘린더 주간 옵션 세팅
+    // 캘린더 주간 옵션 세팅 (최근 4주)
     const weeks = generateReportingWeeks(4);
-    setReportingWeeks(weeks);
-    if (weeks.length > 0) {
-      setSelectedWeekId(weeks[0].id);
+    
+    if (weeks.length >= 2) {
+      // 최근 2주(이번주 + 지난주) 통합 조회용 가상 객체 생성
+      const combinedWeek: ReportingWeek = {
+        id: 'combined',
+        label: '✨ 최근 2주 통합 (이번 주 + 지난주)',
+        start: weeks[1].start, // 지난주 목요일부터
+        end: weeks[0].end       // 이번 주 수요일까지
+      };
+      
+      const updatedWeeks = [combinedWeek, ...weeks];
+      setReportingWeeks(updatedWeeks);
+      setSelectedWeekId('combined'); // 최초 로드 시 2주치 통합 데이터가 기본 노출되도록 설정!
+    } else {
+      setReportingWeeks(weeks);
+      if (weeks.length > 0) {
+        setSelectedWeekId(weeks[0].id);
+      }
     }
     loadData();
   }, []);
@@ -262,12 +292,13 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {channels.map(channel => {
                   const stats = getUploadStatsForWeek(channel);
+                  const compStats = getComparisonStats(channel);
                   
                   return channel.isCompany ? (
                     /* KODEX 자사 카드 - 압도적인 시각화 */
                     <div 
                       key={channel.id} 
-                      className="bg-white border-2 border-kodex-navy rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between h-48 transition-all duration-300 hover:shadow-lg cursor-pointer"
+                      className="bg-white border-2 border-kodex-navy rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between h-52 transition-all duration-300 hover:shadow-lg cursor-pointer"
                       onClick={() => setSelectedChannel('kodex')}
                       title="클릭 시 하단 테이블을 KODEX 콘텐츠로 필터링합니다"
                     >
@@ -304,11 +335,29 @@ export default function DashboardPage() {
                           <p className="text-[11px] text-slate-400 font-medium leading-none">선택 주간 업로드</p>
                           <div className="flex items-baseline gap-1 mt-1">
                             <p className="text-2xl font-black text-kodex-navy tracking-tight">{stats.total}건</p>
-                            <span className="text-[10px] text-slate-500 font-medium">
+                            <span className="text-[10px] text-slate-500 font-medium shrink-0">
                               (동영 {stats.videos} / 쇼츠 {stats.shorts})
                             </span>
                           </div>
                         </div>
+                      </div>
+
+                      {/* [신규 고도화] 이번 주 vs 지난 주 비교 지표 상시 출력 */}
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-50/60 font-semibold">
+                        <div className="flex gap-2">
+                          <span>이번주: <strong className="text-kodex-navy">{compStats.thisWeek}건</strong></span>
+                          <span className="text-slate-200">|</span>
+                          <span>지난주: <strong className="text-slate-600">{compStats.lastWeek}건</strong></span>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter ${
+                          compStats.diff > 0 
+                            ? 'bg-red-50 text-red-600 border border-red-100/50' 
+                            : compStats.diff < 0 
+                              ? 'bg-blue-50 text-blue-600 border border-blue-100/50' 
+                              : 'bg-slate-50 text-slate-500 border border-slate-200/50'
+                        }`}>
+                          {compStats.diff > 0 ? `▲ 이번주 +${compStats.diff}건 증가` : compStats.diff < 0 ? `▼ 이번주 -${Math.abs(compStats.diff)}건 감소` : '지난주와 동일'}
+                        </span>
                       </div>
                       
                       {/* 백그라운드 KODEX 네이비 포인트 */}
@@ -318,7 +367,7 @@ export default function DashboardPage() {
                     /* 경쟁사 카드 - 차분하게 톤다운 처리 */
                     <div 
                       key={channel.id} 
-                      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-48 transition-all duration-300 hover:shadow-md cursor-pointer"
+                      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-52 transition-all duration-300 hover:shadow-md cursor-pointer relative"
                       onClick={() => setSelectedChannel(channel.name.toLowerCase().includes('tiger') ? 'tiger' : 'sol')}
                       title={`클릭 시 하단 테이블을 ${channel.name.includes('TIGER') ? 'TIGER' : 'SOL'} 콘텐츠로 필터링합니다`}
                     >
@@ -352,11 +401,29 @@ export default function DashboardPage() {
                           <p className="text-[11px] text-slate-400 font-medium leading-none">선택 주간 업로드</p>
                           <div className="flex items-baseline gap-1 mt-1">
                             <p className="text-xl font-bold text-slate-600 tracking-tight">{stats.total}건</p>
-                            <span className="text-[10px] text-slate-400 font-medium">
+                            <span className="text-[10px] text-slate-400 font-medium shrink-0">
                               (동영 {stats.videos} / 쇼츠 {stats.shorts})
                             </span>
                           </div>
                         </div>
+                      </div>
+
+                      {/* [신규 고도화] 이번 주 vs 지난 주 비교 지표 상시 출력 */}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 pt-2 border-t border-slate-100 font-semibold">
+                        <div className="flex gap-2">
+                          <span>이번주: <strong className="text-slate-600">{compStats.thisWeek}건</strong></span>
+                          <span className="text-slate-200">|</span>
+                          <span>지난주: <strong className="text-slate-500">{compStats.lastWeek}건</strong></span>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter ${
+                          compStats.diff > 0 
+                            ? 'bg-red-50/70 text-red-600 border border-red-100/30' 
+                            : compStats.diff < 0 
+                              ? 'bg-blue-50/70 text-blue-600 border border-blue-100/30' 
+                              : 'bg-slate-50 text-slate-400 border border-slate-200/30'
+                        }`}>
+                          {compStats.diff > 0 ? `▲ 이번주 +${compStats.diff}건` : compStats.diff < 0 ? `▼ 이번주 -${Math.abs(compStats.diff)}건` : '동일'}
+                        </span>
                       </div>
                     </div>
                   );
