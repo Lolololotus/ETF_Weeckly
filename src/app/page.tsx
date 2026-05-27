@@ -79,8 +79,8 @@ export default function DashboardPage() {
     }
     
     try {
-      // 서버 API Route를 호출하여 API 키 노출 없이 실시간 데이터를 안전하게 조회
-      const res = await fetch('/api/dashboard');
+      // 서버 API Route를 호출하여 API 키 노출 없이 실시간 데이터를 안전하게 조회 (타임스탬프로 캐시 무력화)
+      const res = await fetch(`/api/dashboard?t=${Date.now()}`);
       if (!res.ok) {
         throw new Error(`API 응답 실패: ${res.status}`);
       }
