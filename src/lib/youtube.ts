@@ -91,9 +91,9 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
     const channelsResult: ChannelInfo[] = [];
 
     for (const target of CHANNELS_TO_FETCH) {
-      // 1. 핸들로 채널 ID 및 정보 조회
+      // 1. 핸들로 채널 ID 및 정보 조회 (실시간 no-store fetch 적용)
       const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&forHandle=${encodeURIComponent(target.handle)}&key=${activeKey}`;
-      const channelRes = await fetch(channelUrl);
+      const channelRes = await fetch(channelUrl, { cache: 'no-store' });
       
       if (!channelRes.ok) {
         throw new Error(`채널 ${target.handle} 조회 실패 (status: ${channelRes.status})`);
@@ -119,9 +119,9 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
         subscribersText = `${subscriberCount.toLocaleString()}명`;
       }
 
-      // 2. 업로드 재생목록에서 최근 동영상 조회 (maxResults=50 으로 대폭 상향하여 5주 전 영상까지 누락 방지)
+      // 2. 업로드 재생목록에서 최근 동영상 조회 (maxResults=50 으로 대폭 상향 및 실시간 no-store fetch 적용)
       const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&key=${activeKey}`;
-      const playlistRes = await fetch(playlistUrl);
+      const playlistRes = await fetch(playlistUrl, { cache: 'no-store' });
       
       if (!playlistRes.ok) {
         throw new Error(`채널 ${channelName}의 업로드 재생목록 조회 실패`);
@@ -158,9 +158,9 @@ export async function getDashboardData(apiKey?: string): Promise<{ channels: Cha
 
       // 3. 필터링된 영상이 있으면 상세 정보(러닝타임 등) 일괄 조회
       if (videoIds.length > 0) {
-        // videos.list API는 쉼표로 다수 ID 조회 가능
+        // videos.list API는 쉼표로 다수 ID 조회 가능 (실시간 no-store fetch 적용)
         const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds.join(',')}&key=${activeKey}`;
-        const detailsRes = await fetch(detailsUrl);
+        const detailsRes = await fetch(detailsUrl, { cache: 'no-store' });
         
         if (detailsRes.ok) {
           const detailsData = await detailsRes.json();
