@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getDashboardData } from '@/lib/youtube';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // 서버 사이드에서 안전하게 .env.local 혹은 환경 변수의 YOUTUBE_API_KEY를 조회
