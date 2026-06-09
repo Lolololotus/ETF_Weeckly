@@ -173,5 +173,71 @@ export const MOCK_CHANNELS: ChannelInfo[] = [
         videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
       }
     ]
+  },
+  {
+    id: "UCZ9jozYXT6BXl2TchjNH8hw",
+    name: "RISE ETF",
+    handle: "@RISE_ETF",
+    logo: "https://yt3.ggpht.com/lhyNAPFyDMsvtMtlPPSlyCMWij9zDKFxyEksac7QiIu_dRSnt-3Q4nT956XH3wChsopdzmTItg=s176-c-k-c0x00ffffff-no-rj",
+    subscribers: 194000,
+    subscribersText: "19.4만명",
+    isCompany: false,
+    videos: [
+      {
+        id: "rise-v1",
+        title: "삼성전자 레버리지부터 피지컬AI까지! 주간 순매수 TOP5 🏆",
+        thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=640&q=80",
+        duration: "03:45",
+        durationSeconds: 225,
+        publishedAt: getPastDateString(0, "04:30:00Z"), // 오늘 기준 0일 전 (이번 주)
+        description: "AI, 반도체, 밸류업, 피지컬 AI까지 새롭게 순위권에 이름을 올린 삼성전자 레버리지! 게다가 꾸준한 인기 현대차 피지컬 AI ETF부터 코리아밸류업커버드콜 ETF까지! 지금 투자자들이 주목하는 ETF 영상으로 확인해 보세요.",
+        type: "video",
+        videoUrl: "https://www.youtube.com/watch?v=8tKMpOBP0Uk"
+      },
+      {
+        id: "rise-v2",
+        title: "SK하이닉스 2배 레버리지의 등장! 주간 순매수 TOP5 🏆",
+        thumbnail: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=640&q=80",
+        duration: "02:15",
+        durationSeconds: 135,
+        publishedAt: getPastDateString(7, "05:20:00Z"), // 오늘 기준 7일 전 (지난주)
+        description: "AI 시대의 핵심은 결국 반도체! SK하이닉스 주가를 하루 수익률 기준 2배로 추종하는 레버리지 ETF가 TOP5 진입! 게다가 피지컬 AI, 월분배 커버드콜, 네트워크 인프라 ETF까지! 투자자들의 관심이 향한 곳은 어디일까요?",
+        type: "video",
+        videoUrl: "https://www.youtube.com/watch?v=62qVA8w_S5M"
+      }
+    ]
+  },
+  {
+    id: "UCnuyNitL5SIfBJvTJcdDNLQ",
+    name: "ACE ETF",
+    handle: "@ace_etf",
+    logo: "https://yt3.ggpht.com/9df3J0GabCTQOc7BWzEEUgTvXGIjHiw5lbsm9-Ft6AXjrbCQisS5IqanDOkX5M_vMsGaQWS5fDA=s176-c-k-c0x00ffffff-no-rj",
+    subscribers: 124000,
+    subscribersText: "12.4만명",
+    isCompany: false,
+    videos: [
+      {
+        id: "ace-v1",
+        title: "스페이스X IPO 참여하는 방법｜ACE 미국우주테크액티브",
+        thumbnail: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=640&q=80",
+        duration: "04:12",
+        durationSeconds: 252,
+        publishedAt: getPastDateString(0, "01:20:00Z"), // 오늘 기준 0일 전 (이번 주)
+        description: "국내 유일 스페이스X IPO 참여 ETF! 많은 투자자들이 스페이스X 상장 뉴스를 본 뒤 투자 기회를 찾지만, 진짜 중요한 건 상장 이후가 아니라 상장 이전의 준비 과정입니다. ACE 미국우주테크액티브 ETF를 확인해 보세요.",
+        type: "video",
+        videoUrl: "https://www.youtube.com/watch?v=vPg1XpF7TuY"
+      },
+      {
+        id: "ace-v2",
+        title: "놓치면 후회할 AI 반도체 슈퍼사이클🚀 ACE ETF로 올라타는 법",
+        thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=640&q=80",
+        duration: "02:30",
+        durationSeconds: 150,
+        publishedAt: getPastDateString(7, "09:40:00Z"), // 오늘 기준 7일 전 (지난주)
+        description: "글로벌 승자독식 기업부터 차세대 AI 반도체, 대한민국 HBM 핵심 생태계까지! 한국투자신탁운용이 만든 ACE ETF로 당신의 반도체 투자 포트폴리오를 완성해 보세요.",
+        type: "video",
+        videoUrl: "https://www.youtube.com/watch?v=RwIL9xdxnyY"
+      }
+    ]
   }
 ];

@@ -121,7 +121,9 @@ async function verifyAPI() {
     const mockChannelsPreview = [
       { name: "삼성자산운용 KODEX ETF", handle: "@samsungfund", subscribers: "12.8만명", videosCount: 5, leadVideo: "[KODEX 주간 ETF 세미나] 금리 인하 수혜, 어떤 ETF가 가장 유리할까?" },
       { name: "스마트 타이거 – TIGER ETF", handle: "@tiger_etf", subscribers: "24.5만명", videosCount: 2, leadVideo: "[TIGER 투자 가이드] 2026년 2분기 글로벌 테마 ETF 트렌드 완벽 브리핑" },
-      { name: "신한 SOL ETF", handle: "@SOL_ETF", subscribers: "4.2만명", videosCount: 3, leadVideo: "[SOL 월간 세미나] 엔화 노출형 ETF로 엔저 시대에 현명하게 대처하는 법" }
+      { name: "신한 SOL ETF", handle: "@SOL_ETF", subscribers: "4.2만명", videosCount: 3, leadVideo: "[SOL 월간 세미나] 엔화 노출형 ETF로 엔저 시대에 현명하게 대처하는 법" },
+      { name: "RISE ETF", handle: "@RISE_ETF", subscribers: "19.4만명", videosCount: 2, leadVideo: "삼성전자 레버리지부터 피지컬AI까지! 주간 순매수 TOP5" },
+      { name: "ACE ETF", handle: "@ace_etf", subscribers: "12.4만명", videosCount: 2, leadVideo: "스페이스X IPO 참여하는 방법｜ACE 미국우주테크액티브" }
     ];
 
     mockChannelsPreview.forEach(ch => {
@@ -144,7 +146,9 @@ async function verifyAPI() {
   const channelsToFetch = [
     { handle: "@KODEXETF", name: "KODEX (자사)" },
     { handle: "@tiger_etf", name: "TIGER ETF (경쟁사1)" },
-    { handle: "@SOL_ETF", name: "SOL ETF (경쟁사2)" }
+    { handle: "@SOL_ETF", name: "SOL ETF (경쟁사2)" },
+    { handle: "@RISE_ETF", name: "RISE ETF (경쟁사3)" },
+    { handle: "@ace_etf", name: "ACE ETF (경쟁사4)" }
   ];
 
   try {

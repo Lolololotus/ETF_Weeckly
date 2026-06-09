@@ -64,8 +64,8 @@ export default function DashboardPage() {
   // 필터 1: 비디오 형식 필터 (전체/동영상/Shorts)
   const [activeTab, setActiveTab] = useState<'all' | 'video' | 'shorts'>('all');
   
-  // 필터 2: 채널별 필터 (전체/KODEX/TIGER/SOL)
-  const [selectedChannel, setSelectedChannel] = useState<'all' | 'kodex' | 'tiger' | 'sol'>('all');
+  // 필터 2: 채널별 필터 (전체/KODEX/TIGER/SOL/RISE/ACE)
+  const [selectedChannel, setSelectedChannel] = useState<'all' | 'kodex' | 'tiger' | 'sol' | 'rise' | 'ace'>('all');
   
   // 동적 리포팅 주간 옵션 목록 (최근 4주)
   const [reportingWeeks, setReportingWeeks] = useState<ReportingWeek[]>([]);
@@ -179,6 +179,10 @@ export default function DashboardPage() {
       channelMatch = v.channelName.toLowerCase().includes('tiger');
     } else if (selectedChannel === 'sol') {
       channelMatch = v.channelName.toLowerCase().includes('sol');
+    } else if (selectedChannel === 'rise') {
+      channelMatch = v.channelName.toLowerCase().includes('rise') || v.handle.toLowerCase().includes('rise');
+    } else if (selectedChannel === 'ace') {
+      channelMatch = v.channelName.toLowerCase().includes('ace') || v.handle.toLowerCase().includes('ace');
     }
     
     return formatMatch && channelMatch;
@@ -353,8 +357,18 @@ export default function DashboardPage() {
                     <div 
                       key={channel.id} 
                       className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-52 transition-all duration-300 hover:shadow-md cursor-pointer relative"
-                      onClick={() => setSelectedChannel(channel.name.toLowerCase().includes('tiger') ? 'tiger' : 'sol')}
-                      title={`클릭 시 하단 테이블을 ${channel.name.includes('TIGER') ? 'TIGER' : 'SOL'} 콘텐츠로 필터링합니다`}
+                      onClick={() => {
+                        const nameLower = channel.name.toLowerCase();
+                        if (nameLower.includes('tiger')) setSelectedChannel('tiger');
+                        else if (nameLower.includes('sol')) setSelectedChannel('sol');
+                        else if (nameLower.includes('rise')) setSelectedChannel('rise');
+                        else if (nameLower.includes('ace')) setSelectedChannel('ace');
+                      }}
+                      title={`클릭 시 하단 테이블을 ${
+                        channel.name.toUpperCase().includes('TIGER') ? 'TIGER' :
+                        channel.name.toUpperCase().includes('SOL') ? 'SOL' :
+                        channel.name.toUpperCase().includes('RISE') ? 'RISE' : 'ACE'
+                      } 콘텐츠로 필터링합니다`}
                     >
                       {/* 로고 및 채널명 */}
                       <div className="flex items-center gap-3">
@@ -468,6 +482,26 @@ export default function DashboardPage() {
                       }`}
                     >
                       SOL
+                    </button>
+                    <button
+                      onClick={() => setSelectedChannel('rise')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        selectedChannel === 'rise'
+                          ? 'bg-amber-500 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      RISE
+                    </button>
+                    <button
+                      onClick={() => setSelectedChannel('ace')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        selectedChannel === 'ace'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      ACE
                     </button>
                   </div>
 

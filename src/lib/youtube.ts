@@ -63,7 +63,9 @@ export function getReportingRange(targetDate: Date = new Date()) {
 const CHANNELS_TO_FETCH = [
   { handle: "@KODEXETF", isCompany: true },
   { handle: "@tiger_etf", isCompany: false },
-  { handle: "@SOL_ETF", isCompany: false }
+  { handle: "@SOL_ETF", isCompany: false },
+  { handle: "@RISE_ETF", isCompany: false },
+  { handle: "@ace_etf", isCompany: false }
 ];
 
 export async function getDashboardData(apiKey?: string): Promise<{ channels: ChannelInfo[]; reportingRange: string; isMock: boolean }> {
