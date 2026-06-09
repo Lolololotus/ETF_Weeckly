@@ -25,11 +25,11 @@ function generateReportingWeeks(count: number = 4): ReportingWeek[] {
     const latestWednesday = new Date(target);
     latestWednesday.setHours(0, 0, 0, 0);
     
-    let diffToWed = currentDay - 3;
+    let diffToWed = 3 - currentDay;
     if (diffToWed < 0) {
       diffToWed += 7;
     }
-    latestWednesday.setDate(target.getDate() - diffToWed);
+    latestWednesday.setDate(target.getDate() + diffToWed);
     
     // 수요일 기준 전주 목요일 (6일 전)
     const prevThursday = new Date(latestWednesday);

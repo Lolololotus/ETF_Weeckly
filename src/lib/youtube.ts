@@ -36,12 +36,12 @@ export function getReportingRange(targetDate: Date = new Date()) {
   // 만약 오늘이 목, 금, 토, 일, 월, 화 라면 이번 주 수요일 혹은 지난주 수요일
   // 수요일 자정 갱신이므로 수요일 당일이라면 오늘 자정이 갱신일임.
   // 5월 21일 목요일 기준 가장 최근 갱신일은 5월 20일 수요일 00:00:00
-  let diffToWed = currentDay - 3;
+  let diffToWed = 3 - currentDay;
   if (diffToWed < 0) {
-    diffToWed += 7; // 지난 주 수요일
+    diffToWed += 7;
   }
   
-  latestWednesday.setDate(targetDate.getDate() - diffToWed);
+  latestWednesday.setDate(targetDate.getDate() + diffToWed);
   
   // 수요일 기준 전주 목요일 (수요일에서 6일 전)
   const prevThursday = new Date(latestWednesday);

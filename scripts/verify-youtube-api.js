@@ -64,10 +64,10 @@ function getReportingRange() {
   const latestWednesday = new Date(targetDate);
   latestWednesday.setHours(0, 0, 0, 0);
   
-  let diffToWed = currentDay - 3;
+  let diffToWed = 3 - currentDay;
   if (diffToWed < 0) diffToWed += 7;
   
-  latestWednesday.setDate(targetDate.getDate() - diffToWed);
+  latestWednesday.setDate(targetDate.getDate() + diffToWed);
   
   const prevThursday = new Date(latestWednesday);
   prevThursday.setDate(latestWednesday.getDate() - 6);
