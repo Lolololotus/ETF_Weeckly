@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChannelInfo, VideoItem } from '@/lib/mockData';
 import { getDashboardData } from '@/lib/youtube';
+import { analyzeVideo } from '@/lib/analysis';
 
 // 최근 N주간의 목~수 리포팅 주간 목록을 계산하는 헬퍼 함수
 interface ReportingWeek {
@@ -70,6 +71,9 @@ export default function DashboardPage() {
   // 동적 리포팅 주간 옵션 목록 (최근 4주)
   const [reportingWeeks, setReportingWeeks] = useState<ReportingWeek[]>([]);
   const [selectedWeekId, setSelectedWeekId] = useState<string>('');
+
+  // 분석 중인 비디오 상태
+  const [activeAnalysisVideo, setActiveAnalysisVideo] = useState<(VideoItem & { channelName: string; channelLogo: string; isCompany: boolean; handle: string }) | null>(null);
 
   const loadData = async (isRefresh: boolean = false) => {
     if (isRefresh) {
@@ -621,13 +625,11 @@ export default function DashboardPage() {
                               )}
                             </td>
 
-                            {/* 썸네일 (클릭 시 새창 이동) */}
+                            {/* 썸네일 (클릭 시 분석 모달 오픈) */}
                             <td className="py-5 px-4">
-                              <a 
-                                href={video.videoUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block aspect-video w-32 rounded-lg object-cover overflow-hidden bg-slate-100 border border-slate-200/50 shadow-sm relative group"
+                              <button 
+                                onClick={() => setActiveAnalysisVideo(video)}
+                                className="block aspect-video w-32 rounded-lg object-cover overflow-hidden bg-slate-100 border border-slate-200/50 shadow-sm relative group cursor-pointer"
                               >
                                 <img 
                                   src={video.thumbnail} 
@@ -643,21 +645,19 @@ export default function DashboardPage() {
                                     <path d="M8 5v14l11-7z" />
                                   </svg>
                                 </div>
-                              </a>
+                              </button>
                             </td>
 
                             {/* 영상 제목 */}
                             <td className="py-5 px-6">
-                              <a 
-                                href={video.videoUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className={`font-semibold hover:underline block leading-snug line-clamp-2 ${
+                              <button 
+                                onClick={() => setActiveAnalysisVideo(video)}
+                                className={`text-left font-semibold hover:underline block leading-snug line-clamp-2 cursor-pointer ${
                                   video.isCompany ? 'text-slate-900 group-hover:text-kodex-blue' : 'text-slate-700 hover:text-slate-900'
                                 }`}
                               >
                                 {video.title}
-                              </a>
+                              </button>
                             </td>
 
                             {/* 러닝타임 */}
@@ -715,6 +715,280 @@ export default function DashboardPage() {
           </>
         )}
       </main>
+
+      {/* 영상 심층 분석 모달 */}
+      {activeAnalysisVideo && (() => {
+        const analysis = analyzeVideo(activeAnalysisVideo, activeAnalysisVideo.channelName, activeAnalysisVideo.handle);
+        const channelLower = activeAnalysisVideo.channelName.toLowerCase();
+        
+        let themeColor = 'bg-slate-600';
+        let badgeColor = 'bg-slate-100 text-slate-700';
+        if (channelLower.includes('kodex')) {
+          themeColor = 'bg-kodex-navy';
+          badgeColor = 'bg-kodex-light-bg text-kodex-blue';
+        } else if (channelLower.includes('tiger')) {
+          themeColor = 'bg-amber-600';
+          badgeColor = 'bg-amber-50 text-amber-700 border border-amber-100';
+        } else if (channelLower.includes('sol')) {
+          themeColor = 'bg-sky-600';
+          badgeColor = 'bg-sky-50 text-sky-700 border border-sky-100';
+        } else if (channelLower.includes('rise')) {
+          themeColor = 'bg-amber-500';
+          badgeColor = 'bg-amber-50 text-amber-800 border border-amber-200';
+        } else if (channelLower.includes('ace')) {
+          themeColor = 'bg-indigo-600';
+          badgeColor = 'bg-indigo-50 text-indigo-700 border border-indigo-100';
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* 모달 헤더 */}
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={activeAnalysisVideo.channelLogo} 
+                    alt={activeAnalysisVideo.channelName} 
+                    className="w-10 h-10 rounded-full border border-slate-200 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=80&q=80"
+                    }}
+                  />
+                  <div>
+                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                      {activeAnalysisVideo.channelName}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
+                        경쟁사 채널
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">{activeAnalysisVideo.handle}</p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => setActiveAnalysisVideo(null)}
+                  className="w-10 h-10 rounded-full hover:bg-slate-100 border border-slate-200 flex items-center justify-center transition-colors text-slate-500 hover:text-slate-800 cursor-pointer shadow-sm"
+                  title="닫기"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 모달 본문 - 2열 스플릿 */}
+              <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                
+                {/* 왼쪽 열 - 플레이어 및 기본 메타데이터 */}
+                <div className="w-full lg:w-5/12 bg-slate-50 border-r border-slate-100 overflow-y-auto p-6 space-y-6">
+                  {/* 플레이어 */}
+                  <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-md border border-slate-200">
+                    <iframe
+                      className="w-full h-full"
+                      src={`https://www.youtube.com/embed/${activeAnalysisVideo.id}`}
+                      title="YouTube video player"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+
+                  {/* 제목 및 유튜브 연결 */}
+                  <div className="space-y-3">
+                    <h3 className="text-base font-extrabold text-slate-800 leading-snug">
+                      {activeAnalysisVideo.title}
+                    </h3>
+                    <a 
+                      href={activeAnalysisVideo.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1.5 text-xs text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md cursor-pointer hover:shadow-lg ${themeColor}`}
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.969.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.507 9.388.507 9.388.507s7.517 0 9.388-.507a3.003 3.003 0 0 0 2.11-2.11C24 15.969 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      <span>유튜브에서 보기</span>
+                    </a>
+                  </div>
+
+                  {/* 기본 메타데이터 분석 카드 */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-1.5 h-3 bg-slate-400 rounded-full"></span>
+                      1. 기본 메타데이터
+                    </h4>
+                    
+                    <div className="space-y-3.5">
+                      <div className="flex items-start gap-3">
+                        <span className="text-slate-400 font-bold text-xs w-20 shrink-0 mt-0.5">발행 일시 (KST)</span>
+                        <span className="text-slate-700 text-xs font-semibold">{analysis.publishedAtKst}</span>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <span className="text-slate-400 font-bold text-xs w-20 shrink-0 mt-0.5">콘텐츠 유형</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            analysis.contentType === 'Shorts(숏폼)' 
+                              ? 'bg-red-50 text-red-600 border border-red-100' 
+                              : analysis.contentType === '라이브' 
+                                ? 'bg-orange-50 text-orange-600 border border-orange-100' 
+                                : 'bg-sky-50 text-sky-600 border border-sky-100'
+                          }`}>
+                            {analysis.contentType}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <span className="text-slate-400 font-bold text-xs w-20 shrink-0 mt-0.5">영상 길이</span>
+                        <div>
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded-full font-mono">
+                            {activeAnalysisVideo.duration}
+                          </span>
+                          <p className="text-xs text-slate-700 font-bold mt-1.5">{analysis.durationCategory}</p>
+                          <p className="text-[11px] text-slate-400 font-medium leading-relaxed mt-0.5">{analysis.durationDetail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 오른쪽 열 - 상세 분석 리포트 */}
+                <div className="w-full lg:w-7/12 overflow-y-auto p-6 space-y-6">
+                  <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 space-y-5">
+                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-1.5 h-3 bg-slate-500 rounded-full"></span>
+                      2. 메시지 및 시각 요소 분석
+                    </h4>
+                    
+                    {/* 초반 30초 Hook */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-slate-400 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                        </svg>
+                        영상 주요 메시지 (오프닝 Hook)
+                      </label>
+                      <div className="bg-white rounded-xl p-3.5 border border-slate-100/80 shadow-sm relative pl-8">
+                        <span className="absolute left-2.5 top-2.5 text-2xl font-serif text-slate-200 leading-none">“</span>
+                        <p className="text-xs text-slate-600 font-bold leading-relaxed">{analysis.hookMessage}</p>
+                      </div>
+                    </div>
+
+                    {/* 결론부 CTA */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-slate-400 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.011 12.018a7.5 7.5 0 11-10.022-10.022c4.14 0 7.5 3.36 7.5 7.5z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9" />
+                        </svg>
+                        행동 유도 문구 (Call to Action)
+                      </label>
+                      <div className="bg-white rounded-xl p-3.5 border border-slate-100/80 shadow-sm relative pl-8">
+                        <span className="absolute left-2.5 top-2.5 text-2xl font-serif text-slate-200 leading-none">“</span>
+                        <p className="text-xs text-slate-600 font-bold leading-relaxed">{analysis.ctaMessage}</p>
+                      </div>
+                    </div>
+
+                    {/* 썸네일 분석 */}
+                    <div className="space-y-3.5 pt-2 border-t border-slate-100">
+                      <label className="text-xs font-extrabold text-slate-400 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        썸네일 이미지 및 시각 분석
+                      </label>
+                      
+                      <div className="flex flex-col sm:flex-row gap-4 items-start bg-white rounded-xl p-4 border border-slate-100/80 shadow-sm">
+                        <img 
+                          src={analysis.thumbnailUrl} 
+                          alt="Thumbnail" 
+                          className="aspect-video w-full sm:w-44 rounded-lg object-cover border border-slate-200/50"
+                        />
+                        <div className="space-y-3 flex-1">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-black uppercase text-slate-400">썸네일 스타일</span>
+                              <span className="bg-slate-100 text-slate-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                {analysis.thumbnailStyle}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-800 font-extrabold mt-1.5">{analysis.thumbnailCopy}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase text-slate-400 block">시각적 연출 및 대비</span>
+                            <p className="text-xs text-slate-500 font-medium leading-relaxed mt-0.5">{analysis.thumbnailVisual}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 space-y-5">
+                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-1.5 h-3 bg-slate-500 rounded-full"></span>
+                      3. 비즈니스 목적 및 연출 분석
+                    </h4>
+
+                    {/* 노출 상품 및 USP */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-extrabold text-slate-400 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                        </svg>
+                        노출 주요 상품 및 핵심 메시지 (USP)
+                      </label>
+                      <div className="bg-white rounded-xl p-4 border border-slate-100/80 shadow-sm space-y-2.5">
+                        <div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase">분석 매칭 상품</span>
+                          <p className="text-xs font-black text-slate-800 mt-0.5">{analysis.matchedProduct}</p>
+                        </div>
+                        <div className="border-t border-slate-50 pt-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase block">핵심 소구점 (USP)</span>
+                          <p className="text-xs text-slate-600 font-semibold leading-relaxed mt-0.5">{analysis.matchedUSP}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 제작 방식 */}
+                    <div className="space-y-2 border-t border-slate-100 pt-3">
+                      <label className="text-xs font-extrabold text-slate-400 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z" />
+                        </svg>
+                        제작 및 연출 방식 (Production Style)
+                      </label>
+                      <div className="bg-white rounded-xl p-4 border border-slate-100/80 shadow-sm space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black text-slate-400 uppercase">제작 분류</span>
+                          <span className="bg-slate-100 text-slate-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            {analysis.productionType}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1">{analysis.productionDetail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              
+              {/* 모달 푸터 */}
+              <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
+                <button
+                  onClick={() => setActiveAnalysisVideo(null)}
+                  className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-colors cursor-pointer shadow-md"
+                >
+                  닫기
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 푸터 */}
       <footer className="bg-white border-t border-slate-100 py-8 mt-16 text-center text-xs text-slate-400 font-medium">
